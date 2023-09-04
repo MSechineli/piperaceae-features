@@ -10,7 +10,7 @@ from PIL import Image, ImageEnhance
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-PATHBASE = '/home/xandao/Imagens'
+PATHBASE = '/home/mhsechineli/Documents/classifiers/piperaceae-features'
 PATCHES = [3]
 
 
@@ -28,7 +28,10 @@ def get_model(model, **kwargs):
     if model == 'mobilenetv2':
         return tf.keras.applications.mobilenet_v2.MobileNetV2(
             **kwargs), tf.keras.applications.mobilenet_v2.preprocess_input
-
+    if model == 'efficientnetv2':
+        return tf.keras.applications.efficientnet_v2.EfficientNetV2B3(**kwargs), tf.keras.applications.efficientnet_v2.preprocess_input
+    if model == 'inceptionresnetv2':
+        return tf.keras.applications.inception_resnet_v2.InceptionResNetV2(**kwargs), tf.keras.applications.inception_resnet_v2.preprocess_input
     raise ValueError
 
 
@@ -42,7 +45,7 @@ def extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, in
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
     spec_height = image_size[0]
     spec_width = image_size[1]
-    input_path_proto = os.path.join(input_path, 'f%d', '*.jpeg')
+    input_path_proto = os.path.join(input_path, 'f%d', '*.png')
 
     for n_patches in patches:
         print('Slicing images into %d non-overlapping patches...' % (n_patches))
