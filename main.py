@@ -10,7 +10,7 @@ from PIL import Image, ImageEnhance
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-PATHBASE = '/home/xandao/Imagens'
+PATHBASE = '/home/mhsechineli/projetos/TCC'
 PATCHES = [3]
 
 
@@ -21,6 +21,12 @@ def next_patch(spec, n):
 
 
 def get_model(model, **kwargs):
+    if model == 'xception':
+        return tf.keras.applications.xception.Xception(**kwargs), tf.keras.applications.xception.preprocess_input
+    if model == 'DenseNet201':
+        return tf.keras.applications.densenet.DenseNet201(**kwargs), tf.keras.applications.densenet.preprocess_input
+    if model == 'vgg19':
+        return tf.keras.applications.vgg19.VGG19(**kwargs), tf.keras.applications.vgg19.preprocess_input
     if model == 'vgg16':
         return tf.keras.applications.vgg16.VGG16(**kwargs), tf.keras.applications.vgg16.preprocess_input
     if model == 'resnet50v2':
@@ -97,8 +103,9 @@ def save_image(contrast, dataset, fname, im_sliced):
     for i, im in enumerate(im_sliced, start=1):
         fname_sliced = os.path.join(dir, '%s_%s' % (i, fname))
 
-        print('%s saved' % fname_sliced)
-        tf.keras.preprocessing.image.save_img(fname_sliced, im)
+        if not os.path.isfile(fname_sliced):
+            print('%s saved' % fname_sliced)
+            tf.keras.preprocessing.image.save_img(fname_sliced, im)
 
 
 def save_file(extension, features, fold, n_patches, output_path):
@@ -162,12 +169,12 @@ def prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, inp
 
 
 def main():
-    for contrast in [1.8, 1.5, 1.2]:
+    for contrast in [1.2]:
         for dataset in ['pr_dataset']:
-            for cnn in ['vgg16']:
-                for color in ['GRAYSCALE', 'RGB']:
-                    for image_size in ['512', '400', '256']:
-                        for minimum_image in ['20', '10', '5']:
+            for cnn in ['xception']:
+                for color in ['GRAYSCALE']:
+                    for image_size in ['512']:
+                        for minimum_image in ['10', '20']:
                             for level in ['specific_epithet_trusted']:
                                     print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
                                           % (cnn, color, dataset, image_size, level, minimum_image))
