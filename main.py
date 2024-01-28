@@ -5,12 +5,20 @@ import os
 import pandas as pd
 import pathlib
 import tensorflow as tf
+import logging
+import time
+import datetime
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    filename=datetime.datetime.now().strftime('time_%H_%M_%d_%m_%Y.log'), encoding='utf-8', level=logging.INFO)
 
 from PIL import Image, ImageEnhance
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-PATHBASE = '/home/mhsechineli/projetos/TCC'
+PATHBASE = '/home/msechineli/Documents/tcc'
 PATCHES = [3]
 
 
@@ -45,29 +53,29 @@ def adjust_contrast(contrast, image):
 
 
 def extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, output_path, patches, region):
+    logging.info("GPU ID: %s" % str(gpuid))
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuid)
     spec_height = image_size[0]
     spec_width = image_size[1]
     input_path_proto = os.path.join(input_path, 'f%d', '*.jpeg')
 
     for n_patches in patches:
-        print('Slicing images into %d non-overlapping patches...' % (n_patches))
+        logging.info('Slicing images into %d non-overlapping patches...' % (n_patches))
         tf.keras.backend.clear_session()
 
         input_shape = (math.floor(spec_height / n_patches), spec_width, 3)
-
         model, preprocess_input = get_model(cnn, weights='imagenet', include_top=False,
                                             input_shape=input_shape, pooling='avg')
         total_samples = 0
         n_features = 0
         for fold in folds:
-            print('Extracting features for fold %d...' % (fold))
+            logging.info('Extracting features for fold %d...' % (fold))
             if len(glob.glob(input_path_proto % (fold))) == 0:
                 raise RuntimeError('No files found in: %s' % (input_path_proto % (fold)))
 
             features = []
             for fname in sorted(glob.glob(input_path_proto % (fold))):
-                print('fname: %s' % fname)
+                logging.info('fname: %s' % fname)
                 im_sliced = []
                 im = tf.keras.preprocessing.image.load_img(fname)
                 im_contrast = adjust_contrast(contrast, im)
@@ -104,7 +112,7 @@ def save_image(contrast, dataset, fname, im_sliced):
         fname_sliced = os.path.join(dir, '%s_%s' % (i, fname))
 
         if not os.path.isfile(fname_sliced):
-            print('%s saved' % fname_sliced)
+            logging.info('%s saved' % fname_sliced)
             tf.keras.preprocessing.image.save_img(fname_sliced, im)
 
 
@@ -116,7 +124,7 @@ def save_file(extension, features, fold, n_patches, output_path):
 
     output_path = os.path.join(output_path, 'fold-%d_patches-%d.' + extension)
     output_filename = output_path % (fold, n_patches)
-    print('%s save' % output_filename)
+    logging.info('%s save' % output_filename)
     if extension == 'npy':
         np.save(output_filename, features, allow_pickle=True)
     else:
@@ -136,7 +144,7 @@ def save_information(color, cnn, contrast, dataset, image_size, input_path, leve
 
     df = pd.DataFrame(data, index=index)
     filename = os.path.join(output_path, 'info.csv')
-    print('%s saved' % filename)
+    logging.info('%s saved' % filename)
     df.to_csv(filename, sep=';', index=index, header=None, lineterminator='\n', doublequote=True)
 
 
@@ -156,27 +164,30 @@ def prepare(cnn, color, contrast, dataset, image_size, level, minimum_image, inp
     if not os.path.exists(path_features):
         os.makedirs(path_features)
 
-    print('Feature Extraction Parameters')
-    print('Pre-trained model: %s' % cnn)
-    print('Non-overlapping patches per image: %s' % str(patches))
-    print('Folds: %s' % str(folds))
-    print('Image Dimensions h=%s, w=%s ' % (image_size, image_size))
-    print('Format string for input: %s ' % input_path)
-    print('Format string for output: %s ' % output_path)
-    print('GPU ID: %d' % gpuid)
+    logging.info('Feature Extraction Parameters')
+    logging.info('Pre-trained model: %s' % cnn)
+    logging.info('Non-overlapping patches per image: %s' % str(patches))
+    logging.info('Folds: %s' % str(folds))
+    logging.info('Image Dimensions h=%s, w=%s ' % (image_size, image_size))
+    logging.info('Format string for input: %s ' % input_path)
+    logging.info('Format string for output: %s ' % output_path)
+    logging.info('GPU ID: %d' % gpuid)
 
+    initTime = time.time()
     extract_features(cnn, color, contrast, dataset, gpuid, folds, image_size, input_path, level, minimum_image, path_features, patches, region)
+    endTime = time.time()
+    logging.info("Time to extract_features %f", (endTime - initTime))
 
 
 def main():
     for contrast in [1.2]:
         for dataset in ['pr_dataset']:
-            for cnn in ['xception']:
+            for cnn in ['vgg19']:
                 for color in ['GRAYSCALE']:
                     for image_size in ['512']:
-                        for minimum_image in ['10', '20']:
+                        for minimum_image in ['20', '10', '5']:
                             for level in ['specific_epithet_trusted']:
-                                    print('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
+                                    logging.info('cnn: %s color: %s dataset: %s image_size: %s level: %s minimum_image: %s '
                                           % (cnn, color, dataset, image_size, level, minimum_image))
                                     if 'regions_dataset' == dataset:
                                         for region in ['Norte', 'Nordeste', 'Sul', 'Sudeste', 'Centro-Oeste']:
